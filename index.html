@@ -1,0 +1,2433 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ControlePsi — Receitas Psicotrópicas</title>
+
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+
+<!-- Lucide Icons -->
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@300;400;600;700;800&family=Nunito+Sans:wght@300;400;600&family=DM+Mono:wght@300;400;500&display=swap');
+
+  :root {
+    --bg:          #f0f7f2;
+    --surface:     #ffffff;
+    --surface2:    #f5fbf7;
+    --border:      #d4e8da;
+    --border-med:  #b3d4bc;
+    --green-50:    #eaf5ee;
+    --green-100:   #c8e6d0;
+    --green-200:   #97ccab;
+    --green-400:   #4caf78;
+    --green-500:   #2e8b54;
+    --green-600:   #1f6b3e;
+    --green-800:   #0f3d22;
+    --teal-50:     #e0f4f1;
+    --teal-400:    #26a69a;
+    --teal-600:    #00796b;
+    --warn-50:     #fff8e1;
+    --warn-200:    #ffe082;
+    --warn-500:    #f59e0b;
+    --warn-700:    #b45309;
+    --danger-50:   #fef2f2;
+    --danger-200:  #fecaca;
+    --danger-500:  #ef4444;
+    --danger-700:  #b91c1c;
+    --blue-50:     #eff6ff;
+    --blue-400:    #60a5fa;
+    --blue-600:    #2563eb;
+    --text:        #1a2e1f;
+    --text-2:      #3a5a43;
+    --muted:       #6b8f74;
+    --muted-light: #9ab5a0;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Nunito Sans', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── LOGIN SCREEN ── */
+  #login-screen {
+    position: fixed;
+    inset: 0;
+    background: linear-gradient(135deg, var(--green-800) 0%, var(--green-600) 50%, var(--teal-600) 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    transition: opacity .4s;
+  }
+  #login-screen.hidden { opacity: 0; pointer-events: none; }
+
+  .login-card {
+    background: var(--surface);
+    border-radius: 20px;
+    padding: 2.5rem 2.5rem 2rem;
+    width: min(400px, 90vw);
+    box-shadow: 0 32px 80px rgba(15,61,34,.35);
+    animation: slideUp .4s ease;
+  }
+  @keyframes slideUp { from{transform:translateY(24px);opacity:0} to{transform:translateY(0);opacity:1} }
+
+  .login-logo {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-bottom: 2rem;
+  }
+  .login-logo-icon {
+    width: 60px; height: 60px;
+    background: linear-gradient(135deg, var(--green-500), var(--teal-600));
+    border-radius: 16px;
+    display: flex; align-items: center; justify-content: center;
+    margin-bottom: .75rem;
+    box-shadow: 0 8px 24px rgba(46,139,84,.3);
+  }
+  .login-logo-icon svg { color: #fff; }
+  .login-logo h1 {
+    font-family: 'Nunito', sans-serif;
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: var(--green-800);
+  }
+  .login-logo span {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--muted);
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+  }
+
+  .login-form { display: flex; flex-direction: column; gap: 1rem; }
+
+  .login-field { display: flex; flex-direction: column; gap: 5px; }
+  .login-field label {
+    font-size: 0.72rem;
+    font-family: 'DM Mono', monospace;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: .7px;
+  }
+  .login-input-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+  .login-input-wrap svg {
+    position: absolute;
+    left: 12px;
+    color: var(--muted-light);
+    pointer-events: none;
+  }
+  .login-field input {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 14px 10px 40px;
+    color: var(--text);
+    font-family: 'Nunito Sans', sans-serif;
+    font-size: 0.9rem;
+    outline: none;
+    transition: all .2s;
+  }
+  .login-field input:focus {
+    border-color: var(--green-400);
+    background: var(--surface);
+    box-shadow: 0 0 0 3px rgba(76,175,120,.12);
+  }
+
+  .login-error {
+    background: var(--danger-50);
+    border: 1px solid var(--danger-200);
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 0.82rem;
+    color: var(--danger-700);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .login-error.hidden { display: none; }
+
+  .btn-login {
+    background: linear-gradient(135deg, var(--green-500), var(--green-600));
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    padding: 12px;
+    font-family: 'Nunito', sans-serif;
+    font-weight: 700;
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: all .2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-top: .5rem;
+    box-shadow: 0 4px 12px rgba(46,139,84,.3);
+  }
+  .btn-login:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(46,139,84,.4); }
+  .btn-login:active { transform: translateY(0); }
+
+  /* ── APP (hidden until login) ── */
+  #app-shell { display: none; }
+  #app-shell.visible { display: block; }
+
+  /* ── HEADER ── */
+  header {
+    background: var(--green-600);
+    padding: 0 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 64px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 2px 12px rgba(15,61,34,.18);
+  }
+
+  .logo { display: flex; align-items: center; gap: 0.75rem; }
+
+  .logo-icon {
+    width: 38px; height: 38px;
+    background: rgba(255,255,255,.18);
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    border: 1px solid rgba(255,255,255,.25);
+  }
+  .logo-icon svg { color: #fff; }
+
+  .logo h1 {
+    font-family: 'Nunito', sans-serif;
+    font-size: 1.25rem;
+    font-weight: 800;
+    color: #fff;
+    letter-spacing: -0.3px;
+  }
+
+  .logo span {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.62rem;
+    color: rgba(255,255,255,.65);
+    display: block;
+    margin-top: -1px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+
+  .header-actions { display: flex; gap: 0.75rem; align-items: center; }
+
+  .firebase-status {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.7rem;
+    padding: 4px 10px;
+    border-radius: 20px;
+    border: 1px solid rgba(255,255,255,.3);
+    color: rgba(255,255,255,.7);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .firebase-status.connected { color: #a7f3c0; border-color: #a7f3c0; }
+  .firebase-status .dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+  .logout-btn {
+    background: rgba(255,255,255,.12);
+    border: 1px solid rgba(255,255,255,.25);
+    color: rgba(255,255,255,.85);
+    border-radius: 8px;
+    padding: 6px 12px;
+    cursor: pointer;
+    font-family: 'Nunito', sans-serif;
+    font-size: 0.8rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: all .2s;
+  }
+  .logout-btn:hover { background: rgba(255,255,255,.2); }
+
+  /* ── BTN ── */
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 9px 18px;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    font-family: 'Nunito', sans-serif;
+    font-weight: 700;
+    font-size: 0.85rem;
+    transition: all .2s;
+    text-decoration: none;
+    white-space: nowrap;
+  }
+  .btn-primary { background: var(--green-500); color: #fff; }
+  .btn-primary:hover { background: var(--green-600); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(46,139,84,.3); }
+  .btn-white { background: #fff; color: var(--green-600); border: 1px solid var(--border); }
+  .btn-white:hover { border-color: var(--green-400); color: var(--green-600); }
+  .btn-secondary { background: var(--surface2); color: var(--text-2); border: 1px solid var(--border); }
+  .btn-secondary:hover { border-color: var(--green-400); }
+  .btn-danger { background: var(--danger-500); color: #fff; }
+  .btn-danger:hover { background: var(--danger-700); }
+  .btn-warn { background: var(--warn-500); color: #fff; }
+  .btn-warn:hover { background: var(--warn-700); }
+  .btn-teal { background: var(--teal-600); color: #fff; }
+  .btn-teal:hover { opacity: .9; }
+  .btn-sm { padding: 6px 12px; font-size: 0.78rem; }
+  .btn-full { width: 100%; justify-content: center; }
+
+  /* ── LAYOUT ── */
+  .app { display: grid; grid-template-columns: 230px 1fr; min-height: calc(100vh - 64px); }
+
+  /* ── SIDEBAR ── */
+  aside {
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    padding: 1.25rem 0.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    box-shadow: 2px 0 8px rgba(15,61,34,.04);
+  }
+
+  .nav-section-title {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.62rem;
+    color: var(--muted-light);
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+    padding: 0 0.5rem;
+    margin: 0.75rem 0 0.25rem;
+  }
+
+  .nav-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: var(--muted);
+    transition: all .15s;
+    border: none;
+    background: none;
+    width: 100%;
+    text-align: left;
+  }
+  .nav-item:hover { background: var(--green-50); color: var(--green-600); }
+  .nav-item.active { background: var(--green-100); color: var(--green-600); }
+  .nav-item .icon { display: flex; align-items: center; justify-content: center; width: 20px; }
+  .nav-badge {
+    margin-left: auto;
+    background: var(--danger-500);
+    color: #fff;
+    font-size: 0.65rem;
+    font-family: 'DM Mono', monospace;
+    padding: 2px 6px;
+    border-radius: 10px;
+    min-width: 20px;
+    text-align: center;
+  }
+  .nav-badge.warn { background: var(--warn-500); color: #fff; }
+
+  /* ── MAIN ── */
+  main { padding: 1.75rem; overflow-y: auto; }
+
+  /* ── STATS BAR ── */
+  .stats-bar {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1rem;
+    margin-bottom: 1.75rem;
+  }
+
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 1.25rem 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    transition: all .2s;
+    box-shadow: 0 2px 8px rgba(15,61,34,.04);
+  }
+  .stat-card:hover { box-shadow: 0 4px 16px rgba(15,61,34,.1); transform: translateY(-2px); }
+  .stat-card .label {
+    font-size: 0.72rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: .9px;
+    font-family: 'DM Mono', monospace;
+  }
+  .stat-card .value {
+    font-family: 'Nunito', sans-serif;
+    font-size: 2.2rem;
+    font-weight: 800;
+    color: var(--green-600);
+    line-height: 1;
+  }
+  .stat-card.alert-card .value { color: var(--warn-700); }
+  .stat-card.danger-card .value { color: var(--danger-700); }
+  .stat-card.blue-card .value { color: var(--blue-600); }
+
+  /* ── SECTION HEADER ── */
+  .section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1.25rem;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+  .section-header h2 {
+    font-family: 'Nunito', sans-serif;
+    font-size: 1.4rem;
+    font-weight: 800;
+    color: var(--green-800);
+    letter-spacing: -0.3px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .search-bar { flex: 1; max-width: 300px; position: relative; }
+  .search-bar input {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 14px 8px 36px;
+    color: var(--text);
+    font-size: 0.85rem;
+    outline: none;
+    transition: border-color .2s;
+    font-family: 'Nunito Sans', sans-serif;
+  }
+  .search-bar input:focus { border-color: var(--green-400); box-shadow: 0 0 0 3px rgba(76,175,120,.15); }
+  .search-bar .search-icon { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--muted-light); }
+
+  /* ── MED FILTER BAR ── */
+  .med-filter-bar {
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+    margin-bottom: 1.25rem;
+    flex-wrap: wrap;
+  }
+  .med-filter-bar label {
+    font-family: 'DM Mono', monospace;
+    font-size: .7rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: .7px;
+    white-space: nowrap;
+  }
+  .med-filter-bar select {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 6px 12px;
+    color: var(--text);
+    font-family: 'Nunito Sans', sans-serif;
+    font-size: .82rem;
+    outline: none;
+    cursor: pointer;
+    max-width: 220px;
+    transition: border-color .2s;
+  }
+  .med-filter-bar select:focus { border-color: var(--green-400); }
+
+  /* ── TABLE ── */
+  .table-container {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: 0 2px 10px rgba(15,61,34,.05);
+  }
+
+  table { width: 100%; border-collapse: collapse; }
+
+  thead tr { background: var(--green-50); border-bottom: 1px solid var(--border); }
+  th {
+    padding: 12px 16px;
+    text-align: left;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--muted);
+    white-space: nowrap;
+  }
+
+  tbody tr { border-bottom: 1px solid var(--border); transition: background .15s; cursor: pointer; }
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr:hover { background: var(--green-50); }
+  tbody tr.row-alert { background: #fffbeb; }
+  tbody tr.row-alert:hover { background: #fef3c7; }
+  tbody tr.row-expired { background: var(--danger-50); }
+  tbody tr.row-expired:hover { background: #fee2e2; }
+  tbody tr.row-new { background: var(--blue-50); }
+  tbody tr.row-new:hover { background: #dbeafe; }
+  tbody tr.row-urgente { background: #fff7ed; }
+  tbody tr.row-urgente:hover { background: #ffedd5; }
+
+  td { padding: 13px 16px; font-size: 0.85rem; vertical-align: middle; }
+  .patient-name { font-weight: 700; color: var(--text); font-family: 'Nunito', sans-serif; }
+  .patient-meta { font-size: 0.72rem; color: var(--muted); font-family: 'DM Mono', monospace; margin-top: 2px; }
+
+  /* ── PILLS ── */
+  .pill {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 0.7rem;
+    font-family: 'DM Mono', monospace;
+    font-weight: 500;
+    white-space: nowrap;
+    border: 1px solid transparent;
+  }
+  .pill-retirada  { background: var(--green-50); color: var(--green-600); border-color: var(--green-200); }
+  .pill-recepcao  { background: var(--blue-50); color: var(--blue-600); border-color: #bfdbfe; }
+  .pill-nova-rec  { background: var(--teal-50); color: var(--teal-600); border-color: #99f6e4; }
+  .pill-vencida   { background: var(--danger-50); color: var(--danger-700); border-color: var(--danger-200); }
+  .pill-pendente  { background: var(--warn-50); color: var(--warn-700); border-color: var(--warn-200); }
+  .pill-urgente   { background: #fff7ed; color: #c2410c; border-color: #fed7aa; animation: glow-warn 2s infinite; }
+  @keyframes glow-warn { 0%,100%{box-shadow:none} 50%{box-shadow:0 0 8px rgba(245,158,11,.35)} }
+
+  /* ── DATE CHIP ── */
+  .date-chip {
+    display: inline-block;
+    padding: 3px 8px;
+    border-radius: 6px;
+    font-size: 0.7rem;
+    font-family: 'DM Mono', monospace;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    white-space: nowrap;
+  }
+  .date-chip.done { color: var(--green-600); border-color: var(--green-200); background: var(--green-50); }
+  .date-chip.next { color: var(--warn-700); border-color: var(--warn-200); background: var(--warn-50); }
+  .date-chip.urgent { color: #c2410c; border-color: #fed7aa; background: #fff7ed; animation: blink 1.5s infinite; }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.6} }
+
+  /* ── ALERT BANNER ── */
+  .alert-banner {
+    background: var(--warn-50);
+    border: 1px solid var(--warn-200);
+    border-left: 4px solid var(--warn-500);
+    border-radius: 10px;
+    padding: 1rem 1.25rem;
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .alert-banner h3 { font-size: 0.9rem; color: var(--warn-700); margin-bottom: 4px; font-family: 'Nunito', sans-serif; font-weight: 700; }
+  .alert-banner p { font-size: 0.82rem; color: var(--muted); line-height: 1.5; }
+
+  /* ── MODAL ── */
+  .modal-overlay {
+    position: fixed; inset: 0;
+    background: rgba(15,40,20,.45);
+    z-index: 500;
+    display: flex; align-items: flex-start; justify-content: center;
+    padding: 2rem 1rem;
+    overflow-y: auto;
+    backdrop-filter: blur(4px);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .2s;
+  }
+  .modal-overlay.open { opacity: 1; pointer-events: all; }
+
+  .modal {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    width: min(760px, 100%);
+    box-shadow: 0 24px 80px rgba(15,61,34,.2);
+    transform: translateY(16px);
+    transition: transform .2s;
+    margin: auto;
+  }
+  .modal-overlay.open .modal { transform: translateY(0); }
+
+  .modal-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 1.5rem 2rem;
+    border-bottom: 1px solid var(--border);
+    background: var(--green-50);
+    border-radius: 18px 18px 0 0;
+  }
+  .modal-header h2 {
+    font-family: 'Nunito', sans-serif;
+    font-size: 1.2rem;
+    font-weight: 800;
+    color: var(--green-800);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .modal-close {
+    background: none; border: none; cursor: pointer;
+    color: var(--muted); padding: 4px 8px;
+    border-radius: 6px; transition: all .15s;
+    display: flex; align-items: center;
+  }
+  .modal-close:hover { background: var(--green-100); color: var(--green-700); }
+
+  .modal-body { padding: 2rem; }
+  .modal-footer {
+    padding: 1.25rem 2rem;
+    border-top: 1px solid var(--border);
+    display: flex; gap: 0.75rem; justify-content: flex-end;
+    background: var(--surface2);
+    border-radius: 0 0 18px 18px;
+  }
+
+  /* ── FORM ── */
+  .form-section { margin-bottom: 1.75rem; }
+  .form-section-title {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.68rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid var(--green-100);
+    display: flex; align-items: center; gap: 8px;
+  }
+
+  .form-grid { display: grid; gap: 1rem; }
+  .form-grid-2 { grid-template-columns: 1fr 1fr; }
+  .form-grid-3 { grid-template-columns: 1fr 1fr 1fr; }
+  .col-span-2 { grid-column: span 2; }
+  .col-span-3 { grid-column: span 3; }
+
+  .field label {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.75rem;
+    font-family: 'DM Mono', monospace;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: .7px;
+    margin-bottom: 5px;
+  }
+  .field input, .field select, .field textarea {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 9px 13px;
+    color: var(--text);
+    font-family: 'Nunito Sans', sans-serif;
+    font-size: 0.88rem;
+    outline: none;
+    transition: all .2s;
+  }
+  .field input:focus, .field select:focus, .field textarea:focus {
+    border-color: var(--green-400);
+    background: var(--surface);
+    box-shadow: 0 0 0 3px rgba(76,175,120,.12);
+  }
+  .field textarea { resize: vertical; min-height: 80px; }
+  .field select { cursor: pointer; }
+
+  /* ── MED ITEMS ── */
+  .med-list { display: flex; flex-direction: column; gap: 0.75rem; }
+  .med-item {
+    background: var(--green-50);
+    border: 1px solid var(--green-100);
+    border-radius: 10px;
+    padding: 1rem;
+    position: relative;
+  }
+  .med-item-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+  .remove-med {
+    position: absolute; top: 10px; right: 10px;
+    background: none; border: none; cursor: pointer;
+    color: var(--muted-light);
+    display: flex; align-items: center;
+    transition: color .15s;
+  }
+  .remove-med:hover { color: var(--danger-500); }
+
+  /* ── STATUS OPTIONS ── */
+  .status-selector { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+  .status-option {
+    padding: 7px 14px;
+    border-radius: 8px;
+    border: 2px solid var(--border);
+    cursor: pointer;
+    font-size: 0.78rem;
+    font-family: 'Nunito', sans-serif;
+    font-weight: 700;
+    transition: all .15s;
+    background: var(--surface2);
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .status-option:hover { border-color: var(--green-400); color: var(--green-600); background: var(--green-50); }
+  .status-option.selected-retirada { border-color: var(--green-400); background: var(--green-50); color: var(--green-600); }
+  .status-option.selected-recepcao { border-color: var(--blue-400); background: var(--blue-50); color: var(--blue-600); }
+  .status-option.selected-nova-receita { border-color: var(--teal-400); background: var(--teal-50); color: var(--teal-600); }
+  .status-option.selected-pendente  { border-color: var(--warn-500); background: var(--warn-50); color: var(--warn-700); }
+  .status-option.selected-vencida  { border-color: var(--danger-500); background: var(--danger-50); color: var(--danger-700); }
+
+  /* ── DETAIL VIEW ── */
+  .detail-section { margin-bottom: 1.75rem; }
+  .detail-section h3 {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.68rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid var(--green-100);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+  .detail-item .d-label {
+    font-size: 0.7rem;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    text-transform: uppercase;
+    letter-spacing: .7px;
+    margin-bottom: 2px;
+  }
+  .detail-item .d-value { font-size: 0.9rem; color: var(--text); font-weight: 600; }
+
+  .med-detail-card {
+    background: var(--green-50);
+    border: 1px solid var(--green-100);
+    border-radius: 10px;
+    padding: 1rem;
+    margin-bottom: 0.75rem;
+  }
+  .med-detail-card h4 { font-size: 0.9rem; margin-bottom: 4px; color: var(--green-800); font-family: 'Nunito', sans-serif; font-weight: 700; display: flex; align-items: center; gap: 6px; }
+  .med-detail-card p { font-size: 0.8rem; color: var(--muted); margin-top: 2px; }
+
+  /* ── SCHEDULE TIMELINE ── */
+  .schedule-timeline { display: flex; flex-direction: column; gap: 0.5rem; margin-top: 1rem; }
+  .schedule-item {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.75rem 1rem;
+    border-radius: 10px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    font-size: 0.83rem;
+    transition: all .15s;
+  }
+  .schedule-item.sched-done { background: var(--green-50); border-color: var(--green-200); }
+  .schedule-item.sched-next { border-color: var(--warn-200); background: var(--warn-50); }
+  .schedule-item.sched-urgent { border-color: #fed7aa; background: #fff7ed; animation: glow-urgent 2s infinite; }
+  @keyframes glow-urgent { 0%,100%{box-shadow:none} 50%{box-shadow:0 0 12px rgba(245,158,11,.25)} }
+  .schedule-item.sched-future { opacity: .55; }
+
+  .sched-num { font-family: 'DM Mono', monospace; font-size: 0.7rem; color: var(--muted-light); width: 18px; text-align: center; }
+  .sched-date { font-family: 'DM Mono', monospace; font-size: 0.82rem; min-width: 90px; color: var(--text); font-weight: 500; }
+  .sched-status { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+
+  /* ── EMITIR RECEITA BUTTON ── */
+  .btn-emitir {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 5px 12px;
+    border-radius: 20px;
+    background: var(--green-500);
+    color: #fff;
+    border: none;
+    cursor: pointer;
+    font-size: 0.73rem;
+    font-family: 'Nunito', sans-serif;
+    font-weight: 700;
+    transition: all .15s;
+    animation: pop-in .3s ease;
+    white-space: nowrap;
+  }
+  .btn-emitir:hover { background: var(--green-600); transform: scale(1.05); }
+  @keyframes pop-in { from{transform:scale(.8);opacity:0} to{transform:scale(1);opacity:1} }
+
+  /* ── ALERT LIST ── */
+  .alert-list { display: flex; flex-direction: column; gap: 1rem; }
+  .alert-item {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 1.25rem 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    cursor: pointer;
+    transition: all .2s;
+    box-shadow: 0 2px 8px rgba(15,61,34,.04);
+  }
+  .alert-item:hover { transform: translateX(4px); box-shadow: 0 4px 16px rgba(15,61,34,.1); }
+  .alert-item.critical { border-left: 4px solid var(--danger-500); }
+  .alert-item.warning  { border-left: 4px solid var(--warn-500); }
+  .alert-icon { display: flex; align-items: center; justify-content: center; }
+  .alert-content { flex: 1; }
+  .alert-content h3 { font-size: 0.95rem; margin-bottom: 4px; font-family: 'Nunito', sans-serif; font-weight: 700; }
+  .alert-content p  { font-size: 0.8rem; color: var(--muted); }
+  .alert-days { font-family: 'Nunito', sans-serif; font-weight: 800; font-size: 1.5rem; text-align: center; min-width: 60px; }
+  .alert-days small { display: block; font-family: 'Nunito Sans', sans-serif; font-size: 0.65rem; color: var(--muted); text-transform: uppercase; letter-spacing: .7px; font-weight: 400; }
+
+  /* ── NOVA RECEITA CARD ── */
+  .nova-receita-banner {
+    background: linear-gradient(135deg, var(--teal-50), var(--green-50));
+    border: 1px solid #99f6e4;
+    border-left: 4px solid var(--teal-400);
+    border-radius: 10px;
+    padding: 1rem 1.25rem;
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .nova-receita-banner h3 { font-size: 0.9rem; color: var(--teal-600); margin-bottom: 3px; font-family: 'Nunito', sans-serif; font-weight: 700; }
+  .nova-receita-banner p { font-size: 0.82rem; color: var(--muted); }
+
+  /* ── FILTER TABS ── */
+  .filter-tabs { display: flex; gap: 0.5rem; margin-bottom: 1.25rem; flex-wrap: wrap; }
+  .filter-tab {
+    padding: 6px 14px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--muted);
+    font-size: 0.78rem;
+    font-family: 'Nunito', sans-serif;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all .15s;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .filter-tab.active { background: var(--green-500); color: #fff; border-color: var(--green-500); }
+  .filter-tab:hover:not(.active) { border-color: var(--green-400); color: var(--green-600); }
+
+  /* ── EMPTY STATE ── */
+  .empty-state { text-align: center; padding: 4rem 2rem; color: var(--muted); }
+  .empty-state .empty-icon { display: flex; justify-content: center; margin-bottom: 1rem; opacity: .4; }
+  .empty-state h3 { font-size: 1.1rem; color: var(--text-2); margin-bottom: 0.5rem; font-family: 'Nunito', sans-serif; font-weight: 700; }
+  .empty-state p { font-size: 0.85rem; }
+
+  /* ── TOAST ── */
+  #toast {
+    position: fixed; bottom: 2rem; right: 2rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 12px 18px;
+    font-size: 0.85rem;
+    z-index: 2000;
+    transform: translateY(80px);
+    opacity: 0;
+    transition: all .3s;
+    max-width: 320px;
+    box-shadow: 0 8px 24px rgba(15,61,34,.15);
+    display: flex; align-items: center; gap: 10px;
+    font-family: 'Nunito', sans-serif;
+    font-weight: 600;
+  }
+  #toast.show { transform: translateY(0); opacity: 1; }
+  #toast.success { border-color: var(--green-400); }
+  #toast.error   { border-color: var(--danger-500); }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 900px) {
+    .app { grid-template-columns: 1fr; }
+    aside { display: none; }
+    .stats-bar { grid-template-columns: repeat(2, 1fr); }
+    .form-grid-2, .form-grid-3 { grid-template-columns: 1fr; }
+    .col-span-2, .col-span-3 { grid-column: span 1; }
+    .detail-grid { grid-template-columns: 1fr; }
+  }
+
+  .loading-spinner {
+    display: inline-block;
+    width: 16px; height: 16px;
+    border: 2px solid var(--border);
+    border-top-color: var(--green-500);
+    border-radius: 50%;
+    animation: spin .6s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .hidden { display: none !important; }
+  .view-section { display: none; }
+  .view-section.active { display: block; }
+
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--green-200); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--green-400); }
+
+  .nova-rec-tag {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 0.7rem;
+    font-family: 'DM Mono', monospace;
+    font-weight: 500;
+    background: var(--teal-50);
+    color: var(--teal-600);
+    border: 1px solid #99f6e4;
+  }
+
+  /* autocomplete dropdown */
+  .autocomplete-wrap { position: relative; }
+  .autocomplete-list {
+    position: absolute;
+    top: 100%;
+    left: 0; right: 0;
+    background: var(--surface);
+    border: 1px solid var(--green-200);
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(15,61,34,.12);
+    z-index: 300;
+    max-height: 200px;
+    overflow-y: auto;
+    display: none;
+  }
+  .autocomplete-list.open { display: block; }
+  .autocomplete-item {
+    padding: 8px 13px;
+    cursor: pointer;
+    font-size: .85rem;
+    transition: background .1s;
+    border-bottom: 1px solid var(--border);
+  }
+  .autocomplete-item:last-child { border-bottom: none; }
+  .autocomplete-item:hover { background: var(--green-50); color: var(--green-700); }
+  .autocomplete-item strong { display: block; font-weight: 700; }
+  .autocomplete-item span { font-size: .72rem; color: var(--muted); font-family: 'DM Mono', monospace; }
+
+  /* posologia tags */
+  .posologia-tags { display: flex; gap: .5rem; flex-wrap: wrap; margin-top: .4rem; }
+  .posologia-tag {
+    padding: 4px 10px;
+    border-radius: 14px;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    font-size: .72rem;
+    cursor: pointer;
+    transition: all .15s;
+    font-family: 'Nunito Sans', sans-serif;
+  }
+  .posologia-tag:hover { border-color: var(--green-400); background: var(--green-50); color: var(--green-700); }
+  .posologia-tag.sel { border-color: var(--green-500); background: var(--green-100); color: var(--green-700); font-weight: 700; }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════ LOGIN SCREEN ═══════════════ -->
+<div id="login-screen">
+  <div class="login-card">
+    <div class="login-logo">
+      <div class="login-logo-icon">
+        <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a10 10 0 0 1 10 10"/><path d="M12 2a10 10 0 0 0-10 10"/><path d="M12 22a10 10 0 0 0 10-10"/><path d="M12 22a10 10 0 0 1-10-10"/><circle cx="12" cy="12" r="3"/></svg>
+      </div>
+      <h1>ControlePsi</h1>
+      <span>UBS — Controle de Psicotrópicos</span>
+    </div>
+
+    <div class="login-form">
+      <div class="login-field">
+        <label>Usuário</label>
+        <div class="login-input-wrap">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 1 0-16 0"/></svg>
+          <input type="text" id="login-user" placeholder="Digite seu usuário" autocomplete="username">
+        </div>
+      </div>
+      <div class="login-field">
+        <label>Senha</label>
+        <div class="login-input-wrap">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          <input type="password" id="login-pass" placeholder="Digite sua senha" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
+        </div>
+      </div>
+      <div class="login-error hidden" id="login-error">
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        <span id="login-error-msg">Usuário ou senha incorretos.</span>
+      </div>
+      <button class="btn-login" onclick="doLogin()" id="login-btn">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+        Entrar
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ APP SHELL ═══════════════ -->
+<div id="app-shell">
+
+<!-- HEADER -->
+<header>
+  <div class="logo">
+    <div class="logo-icon">
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a10 10 0 0 1 10 10"/><path d="M12 2a10 10 0 0 0-10 10"/><path d="M12 22a10 10 0 0 0 10-10"/><path d="M12 22a10 10 0 0 1-10-10"/><circle cx="12" cy="12" r="3"/></svg>
+    </div>
+    <h1>ControlePsi <span>UBS — Psicotrópicos</span></h1>
+  </div>
+  <div class="header-actions">
+    <div class="firebase-status" id="fb-status">
+      <span class="dot"></span> Conectando...
+    </div>
+    <span id="header-user" style="font-family:'DM Mono',monospace; font-size:.72rem; color:rgba(255,255,255,.7)"></span>
+    <button class="btn btn-white btn-sm" onclick="openNewModal()">
+      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      Nova Receita
+    </button>
+    <button class="logout-btn" onclick="doLogout()">
+      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      Sair
+    </button>
+  </div>
+</header>
+
+<div class="app">
+
+  <!-- SIDEBAR -->
+  <aside>
+    <div class="nav-section-title">Navegação</div>
+    <button class="nav-item active" onclick="showView('dashboard')" id="nav-dashboard">
+      <span class="icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg></span>
+      Dashboard
+    </button>
+    <button class="nav-item" onclick="showView('pacientes')" id="nav-pacientes">
+      <span class="icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>
+      Pacientes
+    </button>
+    <button class="nav-item" onclick="showView('alertas')" id="nav-alertas">
+      <span class="icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></span>
+      Alertas
+      <span class="nav-badge warn" id="badge-alertas" style="display:none"></span>
+    </button>
+    <button class="nav-item" onclick="showView('vencidas')" id="nav-vencidas">
+      <span class="icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span>
+      Vencidas
+      <span class="nav-badge" id="badge-vencidas" style="display:none"></span>
+    </button>
+    <button class="nav-item" onclick="showView('nova-receita')" id="nav-nova-receita">
+      <span class="icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg></span>
+      Nova Emissão
+      <span class="nav-badge" id="badge-nova-rec" style="display:none"></span>
+    </button>
+    <div class="nav-section-title" style="margin-top:1rem">Sistema</div>
+    <button class="nav-item" onclick="exportCSV()">
+      <span class="icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></span>
+      Exportar CSV
+    </button>
+    <button class="nav-item" onclick="window.print()">
+      <span class="icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg></span>
+      Imprimir
+    </button>
+  </aside>
+
+  <!-- MAIN -->
+  <main>
+
+    <!-- DASHBOARD -->
+    <div id="view-dashboard" class="view-section active">
+      <div class="stats-bar">
+        <div class="stat-card">
+          <span class="label">Total Pacientes</span>
+          <span class="value" id="stat-total">0</span>
+        </div>
+        <div class="stat-card blue-card">
+          <span class="label">Na Recepção</span>
+          <span class="value" id="stat-recepcao">0</span>
+        </div>
+        <div class="stat-card alert-card">
+          <span class="label">Alertas (7 dias)</span>
+          <span class="value" id="stat-alertas">0</span>
+        </div>
+        <div class="stat-card danger-card">
+          <span class="label">Vencidas</span>
+          <span class="value" id="stat-vencidas">0</span>
+        </div>
+      </div>
+
+      <div id="banner-alertas" class="alert-banner hidden">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--warn-700)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        <div>
+          <h3>Atenção: Receitas próximas do vencimento</h3>
+          <p id="banner-alertas-text">Há pacientes com receitas a vencer nos próximos 7 dias.</p>
+        </div>
+      </div>
+
+      <div id="banner-nova-rec" class="nova-receita-banner hidden">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--teal-600)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+        <div>
+          <h3 id="banner-nova-rec-text">Receitas prontas para emitir</h3>
+          <p>A recepção pode atualizar o status de cada receita emitida para "Na Recepção".</p>
+        </div>
+      </div>
+
+      <div class="section-header">
+        <h2>
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          Todos os Registros
+        </h2>
+        <div class="search-bar">
+          <span class="search-icon"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span>
+          <input type="text" placeholder="Buscar paciente, CPF, ACS..." id="search-main" oninput="filterTable()">
+        </div>
+      </div>
+
+      <!-- MED FILTER -->
+      <div class="med-filter-bar">
+        <label>
+          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
+          Filtrar por Medicamento:
+        </label>
+        <select id="filter-med" onchange="filterTable()">
+          <option value="">Todos os medicamentos</option>
+        </select>
+      </div>
+
+      <div class="filter-tabs">
+        <button class="filter-tab active" onclick="setFilter('todos', this)">Todos</button>
+        <button class="filter-tab" onclick="setFilter('recepcao', this)">
+          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          Na Recepção
+        </button>
+        <button class="filter-tab" onclick="setFilter('nova-receita', this)">
+          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Nova Emissão
+        </button>
+        <button class="filter-tab" onclick="setFilter('retirada', this)">
+          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          Retiradas
+        </button>
+        <button class="filter-tab" onclick="setFilter('pendente', this)">
+          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          Pendente
+        </button>
+        <button class="filter-tab" onclick="setFilter('urgente', this)">
+          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+          Urgente
+        </button>
+        <button class="filter-tab" onclick="setFilter('vencida', this)">
+          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          Vencidas
+        </button>
+      </div>
+
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>Paciente</th>
+              <th>CPF / CNS</th>
+              <th>ACS</th>
+              <th>Medicamentos</th>
+              <th>1ª Emissão</th>
+              <th>Status</th>
+              <th>Próxima Retirada</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="main-tbody">
+            <tr><td colspan="8"><div class="empty-state"><div class="empty-icon"><svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg></div><h3>Carregando...</h3></div></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- PACIENTES -->
+    <div id="view-pacientes" class="view-section">
+      <div class="section-header">
+        <h2>
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+          Pacientes Cadastrados
+        </h2>
+        <div class="search-bar">
+          <span class="search-icon"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span>
+          <input type="text" placeholder="Buscar..." id="search-pac" oninput="filterTablePac()">
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="openNewModal()">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Novo
+        </button>
+      </div>
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>Nome</th>
+              <th>Nascimento</th>
+              <th>Endereço</th>
+              <th>Telefone</th>
+              <th>ACS</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody id="pac-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ALERTAS -->
+    <div id="view-alertas" class="view-section">
+      <div class="section-header">
+        <h2>
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+          Alertas — Próximas Retiradas
+        </h2>
+      </div>
+      <div id="alert-list-container">
+        <div class="empty-state"><div class="empty-icon"><svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div><h3>Nenhum alerta</h3><p>Todas as receitas estão em dia.</p></div>
+      </div>
+    </div>
+
+    <!-- VENCIDAS -->
+    <div id="view-vencidas" class="view-section">
+      <div class="section-header">
+        <h2>
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          Receitas Vencidas
+        </h2>
+      </div>
+      <div id="expired-list-container">
+        <div class="empty-state"><div class="empty-icon"><svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div><h3>Nenhuma receita vencida</h3><p>Ótimo! Tudo em ordem.</p></div>
+      </div>
+    </div>
+
+    <!-- NOVA RECEITA / EMISSÃO -->
+    <div id="view-nova-receita" class="view-section">
+      <div class="section-header">
+        <h2>
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+          Nova Emissão — Receitas Prontas
+        </h2>
+      </div>
+      <p style="font-size:.85rem; color:var(--muted); margin-bottom:1.25rem; line-height:1.6">
+        Estes pacientes tiveram suas receitas <strong>emitidas pelo médico</strong>. A recepção deve atualizar o status para "Na Recepção" quando a via física estiver disponível para retirada.
+      </p>
+      <div id="nova-rec-list-container">
+        <div class="empty-state"><div class="empty-icon"><svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div><h3>Nenhuma nova emissão</h3><p>Quando uma receita for marcada como emitida, aparecerá aqui.</p></div>
+      </div>
+    </div>
+
+  </main>
+</div><!-- end .app -->
+
+</div><!-- end #app-shell -->
+
+<!-- MODAL CADASTRO / EDIÇÃO -->
+<div class="modal-overlay" id="modal-form">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        <span id="modal-form-title">Nova Receita</span>
+      </h2>
+      <button class="modal-close" onclick="closeModal('modal-form')">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+
+      <div class="form-section">
+        <div class="form-section-title">
+          <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 1 0-16 0"/></svg>
+          Dados do Paciente
+        </div>
+        <div class="form-grid form-grid-2">
+          <div class="field col-span-2">
+            <label>
+              <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 1 0-16 0"/></svg>
+              Nome Completo *
+            </label>
+            <input type="text" id="f-nome" placeholder="Nome completo do paciente">
+          </div>
+          <div class="field">
+            <label>
+              <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+              Data de Nascimento *
+            </label>
+            <input type="date" id="f-nascimento">
+          </div>
+          <div class="field">
+            <label>CNS</label>
+            <input type="text" id="f-cns" placeholder="000 0000 0000 0000">
+          </div>
+          <div class="field">
+            <label>CPF *</label>
+            <input type="text" id="f-cpf" placeholder="000.000.000-00" maxlength="14">
+          </div>
+          <div class="field">
+            <label>
+              <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+              ACS Responsável *
+            </label>
+            <select id="f-acs">
+              <option value="">— Selecionar ACS —</option>
+            </select>
+          </div>
+          <div class="field col-span-2">
+            <label>
+              <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+              Endereço
+            </label>
+            <input type="text" id="f-endereco" placeholder="Rua, número, bairro, cidade">
+          </div>
+          <div class="field">
+            <label>
+              <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.56 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+              Telefone
+            </label>
+            <input type="text" id="f-telefone" placeholder="(00) 00000-0000">
+          </div>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <div class="form-section-title">
+          <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
+          Medicamentos Prescritos
+        </div>
+        <!-- MED FILTER inside form -->
+        <div class="med-filter-bar" style="margin-bottom:.75rem">
+          <label>Filtrar categoria:</label>
+          <select id="form-cat-filter" onchange="filterMedCategories()">
+            <option value="">Todas as categorias</option>
+            <option value="Antidepressivos">Antidepressivos</option>
+            <option value="Antipsicóticos">Antipsicóticos</option>
+            <option value="Ansiolíticos">Ansiolíticos e Sedativos</option>
+            <option value="Estabilizadores">Estabilizadores de Humor</option>
+            <option value="Antiparkinsonianos">Antiparkinsonianos</option>
+            <option value="Alzheimer">Doença de Alzheimer</option>
+            <option value="Outros">Outros</option>
+          </select>
+        </div>
+        <div class="med-list" id="med-list"></div>
+        <button class="btn btn-secondary btn-sm" style="margin-top:.75rem" onclick="addMedField()">
+          <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Adicionar Medicamento
+        </button>
+      </div>
+
+      <div class="form-section">
+        <div class="form-section-title">
+          <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          Emissão &amp; Status
+        </div>
+        <div class="form-grid form-grid-2">
+          <div class="field">
+            <label>Data da 1ª Emissão *</label>
+            <input type="date" id="f-emissao">
+          </div>
+          <div class="field">
+            <label>Status Atual</label>
+            <div class="status-selector" id="status-selector">
+              <button class="status-option" onclick="selectStatus('recepcao', this)">
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                Na Recepção
+              </button>
+              <button class="status-option" onclick="selectStatus('retirada', this)">
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                Retirada
+              </button>
+              <button class="status-option" onclick="selectStatus('pendente', this)">
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                Pendente
+              </button>
+              <button class="status-option" onclick="selectStatus('vencida', this)">
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                Vencida
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+    <div class="modal-footer">
+      <input type="hidden" id="f-id">
+      <button class="btn btn-secondary" onclick="closeModal('modal-form')">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveRecord()">
+        <span id="save-btn-text">Salvar Registro</span>
+        <span id="save-spinner" class="loading-spinner hidden"></span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL DETALHE -->
+<div class="modal-overlay" id="modal-detail">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 1 0-16 0"/></svg>
+        <span id="detail-title">Detalhe do Paciente</span>
+      </h2>
+      <div style="display:flex;gap:.5rem;">
+        <button class="btn btn-secondary btn-sm" onclick="editCurrent()">
+          <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          Editar
+        </button>
+        <button class="btn btn-danger btn-sm" onclick="deleteCurrent()">
+          <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+          Excluir
+        </button>
+        <button class="modal-close" onclick="closeModal('modal-detail')">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+    </div>
+    <div class="modal-body" id="detail-body"></div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ═══════════════ MEDICAMENTOS DATA ═══════════════
+const MEDS_DATA = {
+  "Antidepressivos": [
+    { nome: "Amitriptilina, cloridrato", apresentacoes: ["25 mg (comprimido)"] },
+    { nome: "Clomipramina, cloridrato", apresentacoes: ["10 mg (comprimido)", "25 mg (comprimido)"] },
+    { nome: "Fluoxetina, cloridrato", apresentacoes: ["20 mg (cápsula)"] },
+    { nome: "Nortriptilina, cloridrato", apresentacoes: ["10 mg (cápsula)", "25 mg (cápsula)", "50 mg (cápsula)", "75 mg (cápsula)"] },
+    { nome: "Sertralina, cloridrato", apresentacoes: ["50 mg (comprimido)"] },
+    { nome: "Duloxetina, cloridrato", apresentacoes: ["30 mg (cápsula)", "60 mg (cápsula)"] },
+    { nome: "Bupropiona, cloridrato", apresentacoes: ["150 mg (liberação prolongada)"] },
+  ],
+  "Antipsicóticos": [
+    { nome: "Clorpromazina, cloridrato", apresentacoes: ["25 mg (comprimido)", "100 mg (comprimido)", "40 mg/mL (gotas)"] },
+    { nome: "Haloperidol", apresentacoes: ["1 mg (comprimido)", "5 mg (comprimido)", "2 mg/mL (gotas)", "50 mg/mL (injetável)"] },
+    { nome: "Levomepromazina", apresentacoes: ["25 mg (comprimido)", "100 mg (comprimido)", "40 mg/mL (gotas)"] },
+    { nome: "Clozapina", apresentacoes: ["25 mg", "100 mg"] },
+    { nome: "Olanzapina", apresentacoes: ["5 mg", "10 mg"] },
+    { nome: "Quetiapina, hemifumarato", apresentacoes: ["25 mg", "100 mg", "200 mg"] },
+    { nome: "Risperidona", apresentacoes: ["1 mg", "2 mg", "3 mg", "1 mg/mL (solução oral)"] },
+    { nome: "Ziprasidona, cloridrato", apresentacoes: ["40 mg", "80 mg"] },
+    { nome: "Aripiprazol", apresentacoes: ["10 mg", "15 mg"] },
+  ],
+  "Ansiolíticos": [
+    { nome: "Diazepam", apresentacoes: ["5 mg (comprimido)", "10 mg (comprimido)", "5 mg/mL (injetável)"] },
+    { nome: "Clonazepam", apresentacoes: ["0,5 mg (comprimido)", "2 mg (comprimido)", "2,5 mg/mL (gotas)"] },
+    { nome: "Midazolam, maleato", apresentacoes: ["15 mg (comprimido)", "5 mg/mL (injetável)"] },
+    { nome: "Alprazolam", apresentacoes: ["0,5 mg"] },
+    { nome: "Lorazepam", apresentacoes: ["2 mg"] },
+  ],
+  "Estabilizadores": [
+    { nome: "Carbonato de Lítio", apresentacoes: ["300 mg (comprimido)"] },
+    { nome: "Ácido Valproico / Valproato de Sódio", apresentacoes: ["250 mg (cápsula)", "500 mg (comprimido)", "50 mg/mL (xarope)"] },
+    { nome: "Carbamazepina", apresentacoes: ["200 mg (comprimido)", "400 mg (comprimido)", "20 mg/mL (suspensão oral)"] },
+    { nome: "Fenobarbital", apresentacoes: ["100 mg (comprimido)", "40 mg/mL (gotas)", "100 mg/mL (injetável)"] },
+    { nome: "Fenitoína", apresentacoes: ["100 mg (comprimido)", "50 mg/mL (injetável)"] },
+    { nome: "Lamotrigina", apresentacoes: ["25 mg", "50 mg", "100 mg"] },
+    { nome: "Topiramato", apresentacoes: ["25 mg", "50 mg", "100 mg"] },
+    { nome: "Gabapentina", apresentacoes: ["300 mg", "400 mg"] },
+    { nome: "Oxcarbazepina", apresentacoes: ["300 mg", "600 mg"] },
+  ],
+  "Antiparkinsonianos": [
+    { nome: "Biperideno, cloridrato", apresentacoes: ["2 mg (comprimido)", "5 mg/mL (injetável)"] },
+    { nome: "Levodopa + Carbidopa", apresentacoes: ["200/50 mg (comprimido)"] },
+    { nome: "Levodopa + Benserazida", apresentacoes: ["100/25 mg (cápsula)", "200/50 mg (comprimido)"] },
+    { nome: "Pramipexol, dicloridrato", apresentacoes: ["0,125 mg", "0,25 mg", "1 mg"] },
+    { nome: "Selegilina, cloridrato", apresentacoes: ["5 mg"] },
+    { nome: "Entacapona", apresentacoes: ["200 mg"] },
+  ],
+  "Alzheimer": [
+    { nome: "Donepezila, cloridrato", apresentacoes: ["5 mg", "10 mg"] },
+    { nome: "Galantamina, bromidrato", apresentacoes: ["8 mg", "16 mg", "24 mg"] },
+    { nome: "Rivastigmina, tartarato", apresentacoes: ["1,5 mg", "2 mg/mL (solução oral)", "9 mg (adesivo)", "18 mg (adesivo)"] },
+    { nome: "Memantina", apresentacoes: ["10 mg"] },
+  ],
+  "Outros": [
+    { nome: "Metilfenidato", apresentacoes: ["10 mg"] },
+    { nome: "Naltrexona, cloridrato", apresentacoes: ["50 mg"] },
+    { nome: "Metadona, cloridrato", apresentacoes: ["10 mg"] },
+    { nome: "Morfina, sulfato", apresentacoes: ["10 mg (comprimido)", "30 mg (comprimido)", "10 mg/mL (injetável)"] },
+    { nome: "Codeína, fosfato", apresentacoes: ["30 mg (comprimido)"] },
+    { nome: "Tramadol, cloridrato", apresentacoes: ["50 mg (cápsula)", "50 mg/mL (injetável)"] },
+    { nome: "Prometazina, cloridrato", apresentacoes: ["25 mg"] },
+    { nome: "Tiamina, cloridrato", apresentacoes: ["300 mg"] },
+  ]
+};
+
+const POSOLOGIAS_COMUNS = [
+  "1 comprimido ao dia",
+  "1 comprimido 2x ao dia",
+  "1 comprimido 3x ao dia",
+  "½ comprimido ao dia",
+  "½ comprimido 2x ao dia",
+  "1 comprimido à noite",
+  "1 cápsula ao dia",
+  "1 cápsula 2x ao dia",
+  "20 gotas ao dia",
+  "20 gotas 2x ao dia",
+  "Conforme prescrição médica",
+];
+
+let ALL_MEDS_FLAT = [];
+Object.entries(MEDS_DATA).forEach(([cat, meds]) => {
+  meds.forEach(m => ALL_MEDS_FLAT.push({ ...m, categoria: cat }));
+});
+
+// ═══════════════ STATE ═══════════════
+let db = null;
+let records = [];
+let acsOptions = [];
+let currentFilter = 'todos';
+let currentRecordId = null;
+let currentStatus = 'pendente';
+let medCount = 0;
+let currentUser = null;
+
+const COLLECTION = 'receitas_psicotropicos';
+const USERS_COLLECTION = 'usuarios';
+const ACS_COLLECTION = 'acs_lista';
+const ALERT_DAYS = 7;
+const CYCLE_DAYS = 60;
+
+// ═══════════════ LOGIN ═══════════════
+function doLogin() {
+  const user = document.getElementById('login-user').value.trim();
+  const pass = document.getElementById('login-pass').value;
+  if (!user || !pass) { showLoginError('Preencha usuário e senha.'); return; }
+  if (!db) { showLoginError('Aguarde a conexão com o banco de dados...'); return; }
+
+  document.getElementById('login-btn').disabled = true;
+  document.getElementById('login-btn').innerHTML = '<span class="loading-spinner"></span> Verificando...';
+
+  db.collection(USERS_COLLECTION)
+    .where('usuario', '==', user)
+    .where('senha', '==', pass)
+    .where('ativo', '==', true)
+    .get()
+    .then(snap => {
+      if (snap.empty) {
+        showLoginError('Usuário ou senha incorretos.');
+        resetLoginBtn();
+      } else {
+        currentUser = { id: snap.docs[0].id, ...snap.docs[0].data() };
+        document.getElementById('header-user').textContent = currentUser.nome || user;
+        document.getElementById('login-screen').classList.add('hidden');
+        document.getElementById('app-shell').classList.add('visible');
+        listenRecords();
+        loadACS();
+        resetLoginBtn();
+      }
+    })
+    .catch(e => { showLoginError('Erro: ' + e.message); resetLoginBtn(); });
+}
+
+function showLoginError(msg) {
+  const el = document.getElementById('login-error');
+  document.getElementById('login-error-msg').textContent = msg;
+  el.classList.remove('hidden');
+}
+
+function resetLoginBtn() {
+  const btn = document.getElementById('login-btn');
+  btn.disabled = false;
+  btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg> Entrar`;
+}
+
+function doLogout() {
+  if (!confirm('Deseja sair do sistema?')) return;
+  currentUser = null;
+  records = [];
+  document.getElementById('login-user').value = '';
+  document.getElementById('login-pass').value = '';
+  document.getElementById('login-error').classList.add('hidden');
+  document.getElementById('login-screen').classList.remove('hidden');
+  document.getElementById('app-shell').classList.remove('visible');
+}
+
+// ═══════════════ FIREBASE ═══════════════
+function initFirebase() {
+  const cfg = {
+    apiKey: "AIzaSyBlZqp0kJg0Fj7xyDVFtuA-rnBtay2yNA0",
+    authDomain: "psicolof-55dfa.firebaseapp.com",
+    projectId: "psicolof-55dfa",
+    storageBucket: "psicolof-55dfa.firebasestorage.app",
+    messagingSenderId: "1021734637133",
+    appId: "1:1021734637133:web:1f3082bed433895ae6d604",
+    measurementId: "G-08E7ZCETFP"
+  };
+  try {
+    if (firebase.apps.length) firebase.app().delete();
+    firebase.initializeApp(cfg);
+    db = firebase.firestore();
+    db.collection(USERS_COLLECTION).limit(1).get()
+      .then(() => {
+        document.getElementById('fb-status').className = 'firebase-status connected';
+        document.getElementById('fb-status').innerHTML = '<span class="dot"></span> Firebase OK';
+      })
+      .catch(e => {
+        document.getElementById('fb-status').innerHTML = '<span class="dot"></span> Erro';
+      });
+  } catch(e) { console.error(e); }
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+  initFirebase();
+  document.getElementById('f-emissao').valueAsDate = new Date();
+  buildMedFilterDropdown();
+});
+
+function loadACS() {
+  db.collection(ACS_COLLECTION).orderBy('nome').get().then(snap => {
+    acsOptions = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    updateACSDropdowns();
+  }).catch(() => {
+    // If collection doesn't exist yet, no problem
+  });
+}
+
+function updateACSDropdowns() {
+  const sel = document.getElementById('f-acs');
+  const currentVal = sel.value;
+  sel.innerHTML = '<option value="">— Selecionar ACS —</option>';
+  acsOptions.forEach(a => {
+    const opt = document.createElement('option');
+    opt.value = a.nome;
+    opt.textContent = a.nome + (a.microarea ? ` (Microárea ${a.microarea})` : '');
+    sel.appendChild(opt);
+  });
+  if (currentVal) sel.value = currentVal;
+}
+
+function listenRecords() {
+  db.collection(COLLECTION)
+    .orderBy('emissao', 'desc')
+    .onSnapshot(snap => {
+      records = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      renderAll();
+      buildMedFilterDropdown();
+    }, err => toast('Erro Firestore: ' + err.message, 'error'));
+}
+
+// ═══════════════ DATE HELPERS ═══════════════
+function addDays(dateStr, days) {
+  const d = new Date(dateStr + 'T12:00:00');
+  d.setDate(d.getDate() + days);
+  return d.toISOString().split('T')[0];
+}
+function daysDiff(dateStr) {
+  const now = new Date(); now.setHours(0,0,0,0);
+  const d = new Date(dateStr + 'T12:00:00');
+  return Math.ceil((d - now) / 86400000);
+}
+function fmtDate(dateStr) {
+  if (!dateStr) return '—';
+  const [y,m,d] = dateStr.split('-');
+  return `${d}/${m}/${y}`;
+}
+function getSchedule(emissao) {
+  const dates = [];
+  for (let i = 1; i <= 6; i++) dates.push(addDays(emissao, CYCLE_DAYS * i));
+  return dates;
+}
+function getNextDate(emissao) {
+  const today = new Date(); today.setHours(0,0,0,0);
+  const schedule = getSchedule(emissao);
+  for (const d of schedule) {
+    if (new Date(d + 'T12:00:00') >= today) return d;
+  }
+  return schedule[schedule.length - 1];
+}
+
+// ═══════════════ STATUS LOGIC ═══════════════
+function getRecordStatus(rec) {
+  if (rec.status === 'recepcao')     return { label: 'Na Recepção', cls: 'pill-recepcao', key: 'recepcao' };
+  if (rec.status === 'retirada')     return { label: 'Retirada', cls: 'pill-retirada', key: 'retirada' };
+  if (rec.status === 'nova-receita') return { label: 'Nova Emissão', cls: 'pill-nova-rec', key: 'nova-receita' };
+
+  const next = getNextDate(rec.emissao);
+  const diff = daysDiff(next);
+  if (diff < 0) return { label: 'Vencida', cls: 'pill-vencida', key: 'vencida', alert: true };
+  if (diff <= ALERT_DAYS) return { label: 'Urgente', cls: 'pill-urgente', key: 'urgente', alert: true };
+  return { label: 'Aguardando', cls: 'pill-pendente', key: 'pendente' };
+}
+
+// ═══════════════ MED FILTER DROPDOWN ═══════════════
+function buildMedFilterDropdown() {
+  const sel = document.getElementById('filter-med');
+  const cur = sel.value;
+  const allMedNames = new Set();
+  records.forEach(r => (r.medicamentos||[]).forEach(m => { if(m.nome) allMedNames.add(m.nome); }));
+  ALL_MEDS_FLAT.forEach(m => allMedNames.add(m.nome));
+  const sorted = Array.from(allMedNames).sort();
+  sel.innerHTML = '<option value="">Todos os medicamentos</option>';
+  sorted.forEach(n => {
+    const o = document.createElement('option');
+    o.value = n; o.textContent = n;
+    sel.appendChild(o);
+  });
+  if (cur) sel.value = cur;
+}
+
+// ═══════════════ RENDER ALL ═══════════════
+function renderAll() {
+  updateStats();
+  renderTable();
+  renderPacTable();
+  renderAlerts();
+  renderExpired();
+  renderNovaReceita();
+}
+
+function updateStats() {
+  let total = records.length, recepcao = 0, alertas = 0, vencidas = 0, novaRec = 0;
+  records.forEach(r => {
+    const s = getRecordStatus(r);
+    if (s.key === 'recepcao') recepcao++;
+    if (s.key === 'urgente') alertas++;
+    if (s.key === 'vencida') vencidas++;
+    if (s.key === 'nova-receita') novaRec++;
+  });
+
+  document.getElementById('stat-total').textContent = total;
+  document.getElementById('stat-recepcao').textContent = recepcao;
+  document.getElementById('stat-alertas').textContent = alertas;
+  document.getElementById('stat-vencidas').textContent = vencidas;
+
+  const badgeA = document.getElementById('badge-alertas');
+  const badgeV = document.getElementById('badge-vencidas');
+  const badgeN = document.getElementById('badge-nova-rec');
+  badgeA.textContent = alertas; badgeA.style.display = alertas ? '' : 'none';
+  badgeV.textContent = vencidas; badgeV.style.display = vencidas ? '' : 'none';
+  badgeN.textContent = novaRec; badgeN.style.display = novaRec ? '' : 'none';
+
+  const banner = document.getElementById('banner-alertas');
+  if (alertas > 0) {
+    banner.classList.remove('hidden');
+    document.getElementById('banner-alertas-text').textContent =
+      `${alertas} paciente(s) com urgência — retirada em até ${ALERT_DAYS} dias. Oriente o médico a emitir a receita!`;
+  } else banner.classList.add('hidden');
+
+  const bannerN = document.getElementById('banner-nova-rec');
+  if (novaRec > 0) {
+    bannerN.classList.remove('hidden');
+    document.getElementById('banner-nova-rec-text').textContent =
+      `${novaRec} receita(s) emitida(s) aguardando atualização na recepção`;
+  } else bannerN.classList.add('hidden');
+}
+
+function getFilteredRecords(search) {
+  const q = (search || '').toLowerCase();
+  const medFilter = document.getElementById('filter-med') ? document.getElementById('filter-med').value : '';
+  return records.filter(r => {
+    const matchSearch = !q ||
+      (r.nome||'').toLowerCase().includes(q) ||
+      (r.cpf||'').toLowerCase().includes(q) ||
+      (r.acs||'').toLowerCase().includes(q) ||
+      (r.cns||'').toLowerCase().includes(q);
+    if (!matchSearch) return false;
+    if (medFilter) {
+      const hasMed = (r.medicamentos||[]).some(m => (m.nome||'') === medFilter);
+      if (!hasMed) return false;
+    }
+    if (currentFilter === 'todos') return true;
+    const s = getRecordStatus(r);
+    return s.key === currentFilter;
+  });
+}
+
+const iconCheck = `<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
+const iconDoc = `<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>`;
+const iconClock = `<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>`;
+const iconX = `<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`;
+const iconBolt = `<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>`;
+
+function statusIcon(key) {
+  if (key === 'retirada') return iconCheck;
+  if (key === 'recepcao') return iconDoc;
+  if (key === 'nova-receita') return iconDoc;
+  if (key === 'urgente') return iconBolt;
+  if (key === 'vencida') return iconX;
+  return iconClock;
+}
+
+function renderTable() {
+  const search = document.getElementById('search-main').value;
+  const filtered = getFilteredRecords(search);
+  const tbody = document.getElementById('main-tbody');
+
+  if (filtered.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="8"><div class="empty-state">
+      <div class="empty-icon"><svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div>
+      <h3>Nenhum registro encontrado</h3>
+      <p>Adicione pacientes usando o botão "Nova Receita".</p>
+    </div></td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = filtered.map(r => {
+    const s = getRecordStatus(r);
+    const next = getNextDate(r.emissao);
+    const diff = daysDiff(next);
+    const meds = (r.medicamentos || []).map(m => m.nome).filter(Boolean).join(', ') || '—';
+
+    let rowCls = '';
+    if (s.key === 'vencida') rowCls = 'row-expired';
+    else if (s.key === 'urgente') rowCls = 'row-urgente';
+    else if (s.key === 'nova-receita') rowCls = 'row-new';
+
+    const nextChipCls = (s.key === 'retirada' || s.key === 'recepcao' || s.key === 'nova-receita') ? 'done' :
+                        diff < 0 ? 'urgent' : diff <= ALERT_DAYS ? 'urgent' : 'next';
+
+    const nextLabel = (s.key === 'retirada') ? '—' :
+      `${fmtDate(next)}${diff >= 0 ? ` (${diff}d)` : ' (vencida)'}`;
+
+    const emitirBtn = s.key === 'urgente' ?
+      `<button class="btn-emitir" onclick="event.stopPropagation(); marcarReceitaFeita('${r.id}')">
+        <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        Receita Feita
+      </button>` : '';
+
+    return `<tr class="${rowCls}" onclick="openDetail('${r.id}')">
+      <td>
+        <div class="patient-name">${escHtml(r.nome || '—')}</div>
+        <div class="patient-meta">Nasc: ${fmtDate(r.nascimento)}</div>
+      </td>
+      <td>
+        <div class="patient-meta">${escHtml(r.cpf || '—')}</div>
+        <div class="patient-meta">CNS: ${escHtml(r.cns || '—')}</div>
+      </td>
+      <td><span style="font-size:.82rem; font-weight:600">${escHtml(r.acs || '—')}</span></td>
+      <td><span style="font-size:.78rem; color:var(--muted)">${escHtml(meds.substring(0,40))}${meds.length>40?'…':''}</span></td>
+      <td><span style="font-family:'DM Mono',monospace; font-size:.78rem; color:var(--muted)">${fmtDate(r.emissao)}</span></td>
+      <td>
+        <span class="pill ${s.cls}">${statusIcon(s.key)} ${s.label}</span>
+        ${emitirBtn}
+      </td>
+      <td><span class="date-chip ${nextChipCls}">${nextLabel}</span></td>
+      <td onclick="event.stopPropagation()">
+        <button class="btn btn-secondary btn-sm" onclick="openDetail('${r.id}')">Ver</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function renderPacTable() {
+  const search = document.getElementById('search-pac').value.toLowerCase();
+  const filtered = records.filter(r =>
+    !search || (r.nome||'').toLowerCase().includes(search) ||
+    (r.cpf||'').toLowerCase().includes(search)
+  );
+  const tbody = document.getElementById('pac-tbody');
+  if (filtered.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state"><div class="empty-icon"><svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></div><h3>Nenhum paciente</h3></div></td></tr>`;
+    return;
+  }
+  tbody.innerHTML = filtered.map(r => `
+    <tr onclick="openDetail('${r.id}')">
+      <td><div class="patient-name">${escHtml(r.nome||'—')}</div></td>
+      <td><span class="patient-meta">${fmtDate(r.nascimento)}</span></td>
+      <td><span style="font-size:.82rem">${escHtml(r.endereco||'—')}</span></td>
+      <td><span class="patient-meta">${escHtml(r.telefone||'—')}</span></td>
+      <td><span style="font-size:.82rem; font-weight:600">${escHtml(r.acs||'—')}</span></td>
+      <td onclick="event.stopPropagation()">
+        <button class="btn btn-secondary btn-sm" onclick="editRecord('${r.id}')">
+          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+        </button>
+        <button class="btn btn-danger btn-sm" style="margin-left:.25rem" onclick="deleteRecord('${r.id}')">
+          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+        </button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+function renderAlerts() {
+  const container = document.getElementById('alert-list-container');
+  const alertRecs = records.filter(r => getRecordStatus(r).key === 'urgente')
+    .sort((a,b) => daysDiff(getNextDate(a.emissao)) - daysDiff(getNextDate(b.emissao)));
+
+  if (alertRecs.length === 0) {
+    container.innerHTML = `<div class="empty-state"><div class="empty-icon"><svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div><h3>Nenhum alerta</h3><p>Todas as receitas estão em dia.</p></div>`;
+    return;
+  }
+
+  container.innerHTML = `<div class="alert-list">${alertRecs.map(r => {
+    const next = getNextDate(r.emissao);
+    const diff = daysDiff(next);
+    return `<div class="alert-item warning">
+      <div class="alert-icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--warn-500)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg></div>
+      <div class="alert-content">
+        <h3>${escHtml(r.nome)}</h3>
+        <p>ACS: ${escHtml(r.acs||'—')} · Tel: ${escHtml(r.telefone||'—')}</p>
+        <p style="margin-top:4px; font-size:.78rem; color:var(--muted)">${(r.medicamentos||[]).map(m=>m.nome).join(', ')}</p>
+        <button class="btn-emitir" style="margin-top:8px" onclick="marcarReceitaFeita('${r.id}')">
+          <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          Marcar como Emitida
+        </button>
+      </div>
+      <div class="alert-days" style="color:var(--warn-700)">${diff}<small>dias</small></div>
+    </div>`;
+  }).join('')}</div>`;
+}
+
+function renderExpired() {
+  const container = document.getElementById('expired-list-container');
+  const expRecs = records.filter(r => getRecordStatus(r).key === 'vencida');
+
+  if (expRecs.length === 0) {
+    container.innerHTML = `<div class="empty-state"><div class="empty-icon"><svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div><h3>Nenhuma receita vencida</h3><p>Ótimo! Tudo em ordem.</p></div>`;
+    return;
+  }
+
+  container.innerHTML = `<div class="alert-list">${expRecs.map(r => {
+    const next = getNextDate(r.emissao);
+    const diff = Math.abs(daysDiff(next));
+    return `<div class="alert-item critical" onclick="openDetail('${r.id}')">
+      <div class="alert-icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--danger-500)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg></div>
+      <div class="alert-content">
+        <h3>${escHtml(r.nome)}</h3>
+        <p>Venceu em: ${fmtDate(next)} · ACS: ${escHtml(r.acs||'—')} · Tel: ${escHtml(r.telefone||'—')}</p>
+        <p style="margin-top:4px; font-size:.78rem; color:var(--muted)">${(r.medicamentos||[]).map(m=>m.nome).join(', ')}</p>
+      </div>
+      <div class="alert-days" style="color:var(--danger-700)">${diff}<small>dias atrás</small></div>
+    </div>`;
+  }).join('')}</div>`;
+}
+
+function renderNovaReceita() {
+  const container = document.getElementById('nova-rec-list-container');
+  const recs = records.filter(r => getRecordStatus(r).key === 'nova-receita');
+
+  if (recs.length === 0) {
+    container.innerHTML = `<div class="empty-state"><div class="empty-icon"><svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div><h3>Nenhuma nova emissão</h3><p>Quando uma receita for marcada como emitida, aparecerá aqui.</p></div>`;
+    return;
+  }
+
+  container.innerHTML = `<div class="alert-list">${recs.map(r => {
+    const next = getNextDate(r.emissao);
+    return `<div class="alert-item warning" style="border-left-color:var(--teal-400)">
+      <div class="alert-icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--teal-600)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>
+      <div class="alert-content">
+        <h3>${escHtml(r.nome)}</h3>
+        <p>ACS: ${escHtml(r.acs||'—')} · Tel: ${escHtml(r.telefone||'—')} · Próxima: ${fmtDate(next)}</p>
+        <p style="margin-top:4px; font-size:.78rem; color:var(--muted)">${(r.medicamentos||[]).map(m=>m.nome).join(', ')}</p>
+        <div style="margin-top:10px; display:flex; gap:8px; flex-wrap:wrap">
+          <button class="btn btn-teal btn-sm" onclick="quickStatus('${r.id}','recepcao',null)">
+            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg>
+            Confirmar na Recepção
+          </button>
+          <button class="btn btn-secondary btn-sm" onclick="openDetail('${r.id}')">Ver Detalhes</button>
+        </div>
+      </div>
+      <div style="text-align:center; min-width:80px">
+        <span class="nova-rec-tag">Nova Emissão</span>
+      </div>
+    </div>`;
+  }).join('')}</div>`;
+}
+
+// ═══════════════ MARCAR RECEITA FEITA ═══════════════
+function marcarReceitaFeita(id) {
+  if (!db) { toast('Firebase não conectado.', 'error'); return; }
+  if (!confirm('Confirmar que a receita foi emitida pelo médico?')) return;
+  db.collection(COLLECTION).doc(id).update({ status: 'nova-receita' })
+    .then(() => toast('Receita marcada como emitida!', 'success'))
+    .catch(e => toast('Erro: ' + e.message, 'error'));
+}
+
+// ═══════════════ MODAL DETALHE ═══════════════
+function openDetail(id) {
+  const r = records.find(x => x.id === id);
+  if (!r) return;
+  currentRecordId = id;
+  document.getElementById('detail-title').textContent = r.nome || 'Paciente';
+
+  const schedule = getSchedule(r.emissao);
+  const s = getRecordStatus(r);
+
+  const scheduleHtml = schedule.map((d, i) => {
+    const diff = daysDiff(d);
+    const isPast = diff < 0;
+    const isUrgent = !isPast && diff <= ALERT_DAYS;
+    const isNext = !isPast && schedule.slice(0,i).every(sd => daysDiff(sd) < 0);
+
+    let cls = isPast ? 'sched-done' : isUrgent ? 'sched-urgent' : isNext ? 'sched-next' : 'sched-future';
+    let badge = isPast ? '<span class="pill pill-retirada" style="font-size:.65rem">Passada</span>' :
+                isUrgent ? '<span class="pill pill-urgente" style="font-size:.65rem">Urgente</span>' :
+                isNext ? '<span class="pill pill-pendente" style="font-size:.65rem">Próxima</span>' :
+                '<span style="color:var(--muted-light); font-size:.72rem">Futura</span>';
+
+    const emitirBtn = (isUrgent && r.status !== 'nova-receita' && r.status !== 'recepcao') ?
+      `<button class="btn-emitir" onclick="marcarReceitaFeita('${id}')">
+        <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        Receita Feita
+      </button>` : '';
+
+    return `<div class="schedule-item ${cls}">
+      <span class="sched-num">${i+1}</span>
+      <span class="sched-date">${fmtDate(d)}</span>
+      <span style="font-size:.72rem; color:var(--muted); font-family:'DM Mono',monospace">
+        ${isPast ? `${Math.abs(diff)}d atrás` : `em ${diff}d`}
+      </span>
+      <span class="sched-status">${badge} ${emitirBtn}</span>
+    </div>`;
+  }).join('');
+
+  const meds = (r.medicamentos || []).map(m => `
+    <div class="med-detail-card">
+      <h4><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg> ${escHtml(m.nome||'—')}</h4>
+      <p>Apresentação: ${escHtml(m.apresentacao||'—')}</p>
+      <p>Posologia: ${escHtml(m.posologia||'—')}</p>
+    </div>
+  `).join('') || '<p style="color:var(--muted)">Nenhum medicamento.</p>';
+
+  document.getElementById('detail-body').innerHTML = `
+    <div class="detail-section">
+      <h3><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 1 0-16 0"/></svg> Dados do Paciente</h3>
+      <div class="detail-grid">
+        <div class="detail-item"><div class="d-label">Nome</div><div class="d-value">${escHtml(r.nome||'—')}</div></div>
+        <div class="detail-item"><div class="d-label">Nascimento</div><div class="d-value">${fmtDate(r.nascimento)}</div></div>
+        <div class="detail-item"><div class="d-label">CPF</div><div class="d-value" style="font-family:'DM Mono',monospace">${escHtml(r.cpf||'—')}</div></div>
+        <div class="detail-item"><div class="d-label">CNS</div><div class="d-value" style="font-family:'DM Mono',monospace">${escHtml(r.cns||'—')}</div></div>
+        <div class="detail-item"><div class="d-label">ACS</div><div class="d-value">${escHtml(r.acs||'—')}</div></div>
+        <div class="detail-item"><div class="d-label">Telefone</div><div class="d-value">${escHtml(r.telefone||'—')}</div></div>
+        <div class="detail-item" style="grid-column:span 2"><div class="d-label">Endereço</div><div class="d-value">${escHtml(r.endereco||'—')}</div></div>
+      </div>
+    </div>
+
+    <div class="detail-section">
+      <h3><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg> Medicamentos</h3>
+      ${meds}
+    </div>
+
+    <div class="detail-section">
+      <h3><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg> Cronograma (a cada 60 dias)</h3>
+      <div style="display:flex; align-items:center; gap:1rem; margin-bottom:1rem; flex-wrap:wrap">
+        <div class="detail-item">
+          <div class="d-label">1ª Emissão</div>
+          <div class="d-value" style="font-family:'DM Mono',monospace">${fmtDate(r.emissao)}</div>
+        </div>
+        <div class="detail-item">
+          <div class="d-label">Status</div>
+          <div class="d-value"><span class="pill ${s.cls}">${statusIcon(s.key)} ${s.label}</span></div>
+        </div>
+      </div>
+
+      <div style="font-size:.82rem; color:var(--muted); margin-bottom:.75rem; font-weight:600">Atualizar status da retirada:</div>
+      <div class="status-selector" style="margin-bottom:1.25rem">
+        <button class="status-option ${r.status==='recepcao'?'selected-recepcao':''}" onclick="quickStatus('${r.id}','recepcao',this)">
+          ${iconDoc} Na Recepção
+        </button>
+        <button class="status-option ${r.status==='retirada'?'selected-retirada':''}" onclick="quickStatus('${r.id}','retirada',this)">
+          ${iconCheck} Retirada
+        </button>
+        <button class="status-option ${r.status==='nova-receita'?'selected-nova-receita':''}" onclick="quickStatus('${r.id}','nova-receita',this)">
+          ${iconDoc} Nova Emissão
+        </button>
+        <button class="status-option ${r.status==='pendente'?'selected-pendente':''}" onclick="quickStatus('${r.id}','pendente',this)">
+          ${iconClock} Pendente
+        </button>
+        <button class="status-option ${r.status==='vencida'?'selected-vencida':''}" onclick="quickStatus('${r.id}','vencida',this)">
+          ${iconX} Vencida
+        </button>
+      </div>
+
+      <div class="schedule-timeline">${scheduleHtml}</div>
+    </div>
+  `;
+
+  openModal('modal-detail');
+}
+
+function quickStatus(id, status, btn) {
+  if (!db) { toast('Firebase não conectado.', 'error'); return; }
+  db.collection(COLLECTION).doc(id).update({ status })
+    .then(() => {
+      if (btn) {
+        btn.closest('.status-selector').querySelectorAll('.status-option').forEach(b => b.className = 'status-option');
+        btn.className = `status-option selected-${status}`;
+      }
+      toast('Status atualizado!', 'success');
+    })
+    .catch(e => toast('Erro: ' + e.message, 'error'));
+}
+
+// ═══════════════ MODAL FORM ═══════════════
+function openNewModal() {
+  clearForm();
+  document.getElementById('modal-form-title').textContent = 'Nova Receita';
+  document.getElementById('f-id').value = '';
+  document.getElementById('f-emissao').valueAsDate = new Date();
+  selectStatus('pendente', document.querySelectorAll('#status-selector .status-option')[2]);
+  addMedField();
+  openModal('modal-form');
+}
+
+function clearForm() {
+  ['f-nome','f-nascimento','f-cns','f-cpf','f-acs','f-endereco','f-telefone','f-emissao','f-id']
+    .forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
+  document.getElementById('med-list').innerHTML = '';
+  medCount = 0;
+  currentStatus = 'pendente';
+  document.querySelectorAll('#status-selector .status-option').forEach(b => b.className = 'status-option');
+}
+
+function editRecord(id) {
+  const r = records.find(x => x.id === id);
+  if (!r) return;
+  currentRecordId = id;
+  document.getElementById('modal-form-title').textContent = 'Editar Registro';
+  document.getElementById('f-id').value = id;
+  document.getElementById('f-nome').value = r.nome || '';
+  document.getElementById('f-nascimento').value = r.nascimento || '';
+  document.getElementById('f-cns').value = r.cns || '';
+  document.getElementById('f-cpf').value = r.cpf || '';
+  // ACS dropdown
+  const acsEl = document.getElementById('f-acs');
+  acsEl.value = r.acs || '';
+  if (!acsEl.value && r.acs) {
+    // Add as option if not in list
+    const opt = document.createElement('option');
+    opt.value = r.acs; opt.textContent = r.acs;
+    acsEl.appendChild(opt);
+    acsEl.value = r.acs;
+  }
+  document.getElementById('f-endereco').value = r.endereco || '';
+  document.getElementById('f-telefone').value = r.telefone || '';
+  document.getElementById('f-emissao').value = r.emissao || '';
+  currentStatus = r.status || 'pendente';
+  document.querySelectorAll('#status-selector .status-option').forEach(b => {
+    b.className = 'status-option';
+    if ((b.getAttribute('onclick')||'').includes(`'${currentStatus}'`)) {
+      b.className = `status-option selected-${currentStatus}`;
+    }
+  });
+  document.getElementById('med-list').innerHTML = '';
+  medCount = 0;
+  (r.medicamentos || [{}]).forEach(m => addMedField(m));
+  openModal('modal-form');
+}
+
+function editCurrent() {
+  closeModal('modal-detail');
+  setTimeout(() => editRecord(currentRecordId), 200);
+}
+
+// ═══════════════ MED FIELD (SELECTABLE) ═══════════════
+let currentCatFilter = '';
+
+function filterMedCategories() {
+  currentCatFilter = document.getElementById('form-cat-filter').value;
+  // Update all existing med selects
+  document.querySelectorAll('.med-nome-select').forEach(sel => {
+    const curVal = sel.value;
+    populateMedSelect(sel);
+    if (curVal) sel.value = curVal;
+    // Trigger apresentacao update
+    updateApresentacoes(sel.closest('.med-item'));
+  });
+}
+
+function getFilteredMeds() {
+  if (!currentCatFilter) return ALL_MEDS_FLAT;
+  return ALL_MEDS_FLAT.filter(m => m.categoria === currentCatFilter);
+}
+
+function populateMedSelect(sel) {
+  const meds = getFilteredMeds();
+  sel.innerHTML = '<option value="">— Selecionar medicamento —</option>';
+  const byCat = {};
+  meds.forEach(m => {
+    if (!byCat[m.categoria]) byCat[m.categoria] = [];
+    byCat[m.categoria].push(m);
+  });
+  Object.entries(byCat).forEach(([cat, catMeds]) => {
+    const grp = document.createElement('optgroup');
+    grp.label = cat;
+    catMeds.forEach(m => {
+      const o = document.createElement('option');
+      o.value = m.nome;
+      o.textContent = m.nome;
+      grp.appendChild(o);
+    });
+    sel.appendChild(grp);
+  });
+}
+
+function updateApresentacoes(medItem) {
+  const nomeSel = medItem.querySelector('.med-nome-select');
+  const apSel = medItem.querySelector('.med-apres-select');
+  const nome = nomeSel.value;
+  const med = ALL_MEDS_FLAT.find(m => m.nome === nome);
+  apSel.innerHTML = '<option value="">— Selecionar apresentação —</option>';
+  if (med) {
+    med.apresentacoes.forEach(a => {
+      const o = document.createElement('option');
+      o.value = a; o.textContent = a;
+      apSel.appendChild(o);
+    });
+  }
+}
+
+function addMedField(data = {}) {
+  medCount++;
+  const div = document.createElement('div');
+  div.className = 'med-item';
+  div.innerHTML = `
+    <button class="remove-med" onclick="this.parentElement.remove()" title="Remover">
+      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+    <div class="med-item-grid">
+      <div class="field">
+        <label>Nome do Medicamento</label>
+        <select class="med-nome-select" onchange="updateApresentacoes(this.closest('.med-item'))">
+          <option value="">— Selecionar medicamento —</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Apresentação</label>
+        <select class="med-apres-select">
+          <option value="">— Selecionar apresentação —</option>
+        </select>
+      </div>
+      <div class="field col-span-2">
+        <label>Posologia</label>
+        <select class="med-pos-select">
+          <option value="">— Selecionar ou digitar —</option>
+          ${POSOLOGIAS_COMUNS.map(p => `<option value="${escHtml(p)}">${escHtml(p)}</option>`).join('')}
+          <option value="__custom__">Outra posologia...</option>
+        </select>
+        <input type="text" class="med-pos-custom" style="display:none; margin-top:.4rem" placeholder="Digite a posologia">
+      </div>
+    </div>
+  `;
+  document.getElementById('med-list').appendChild(div);
+
+  const nomeSel = div.querySelector('.med-nome-select');
+  const posSel = div.querySelector('.med-pos-select');
+  const posCustom = div.querySelector('.med-pos-custom');
+
+  populateMedSelect(nomeSel);
+
+  // Restore values
+  if (data.nome) {
+    nomeSel.value = data.nome;
+    if (!nomeSel.value) {
+      const o = document.createElement('option');
+      o.value = data.nome; o.textContent = data.nome;
+      nomeSel.insertBefore(o, nomeSel.children[1]);
+      nomeSel.value = data.nome;
+    }
+    updateApresentacoes(div);
+  }
+  if (data.apresentacao) {
+    const apSel = div.querySelector('.med-apres-select');
+    apSel.value = data.apresentacao;
+    if (!apSel.value) {
+      const o = document.createElement('option');
+      o.value = data.apresentacao; o.textContent = data.apresentacao;
+      apSel.appendChild(o);
+      apSel.value = data.apresentacao;
+    }
+  }
+  if (data.posologia) {
+    posSel.value = data.posologia;
+    if (!posSel.value) {
+      posSel.value = '__custom__';
+      posCustom.style.display = '';
+      posCustom.value = data.posologia;
+    }
+  }
+
+  posSel.addEventListener('change', () => {
+    posCustom.style.display = posSel.value === '__custom__' ? '' : 'none';
+    if (posSel.value !== '__custom__') posCustom.value = '';
+  });
+}
+
+function selectStatus(st, btn) {
+  currentStatus = st;
+  document.querySelectorAll('#status-selector .status-option').forEach(b => b.className = 'status-option');
+  if (btn) btn.className = `status-option selected-${st}`;
+}
+
+async function saveRecord() {
+  if (!db) { toast('Firebase não conectado.', 'error'); return; }
+  const nome = document.getElementById('f-nome').value.trim();
+  const emissao = document.getElementById('f-emissao').value;
+  if (!nome) { toast('Informe o nome do paciente.', 'error'); return; }
+  if (!emissao) { toast('Informe a data da 1ª emissão.', 'error'); return; }
+
+  const medicamentos = [];
+  document.querySelectorAll('#med-list .med-item').forEach(item => {
+    const n = item.querySelector('.med-nome-select').value;
+    const a = item.querySelector('.med-apres-select').value;
+    const posSel = item.querySelector('.med-pos-select');
+    const posCustom = item.querySelector('.med-pos-custom');
+    const p = posSel.value === '__custom__' ? posCustom.value.trim() : posSel.value;
+    if (n) medicamentos.push({ nome: n, apresentacao: a, posologia: p });
+  });
+
+  const data = {
+    nome,
+    nascimento: document.getElementById('f-nascimento').value,
+    cns: document.getElementById('f-cns').value.trim(),
+    cpf: document.getElementById('f-cpf').value.trim(),
+    acs: document.getElementById('f-acs').value,
+    endereco: document.getElementById('f-endereco').value.trim(),
+    telefone: document.getElementById('f-telefone').value.trim(),
+    emissao,
+    status: currentStatus,
+    medicamentos,
+    atualizadoEm: firebase.firestore.FieldValue.serverTimestamp(),
+  };
+
+  const spinner = document.getElementById('save-spinner');
+  const btnText = document.getElementById('save-btn-text');
+  spinner.classList.remove('hidden');
+  btnText.textContent = 'Salvando...';
+
+  const id = document.getElementById('f-id').value;
+  try {
+    if (id) {
+      await db.collection(COLLECTION).doc(id).update(data);
+      toast('Registro atualizado!', 'success');
+    } else {
+      data.criadoEm = firebase.firestore.FieldValue.serverTimestamp();
+      await db.collection(COLLECTION).add(data);
+      toast('Paciente cadastrado!', 'success');
+    }
+    closeModal('modal-form');
+  } catch(e) {
+    toast('Erro ao salvar: ' + e.message, 'error');
+  } finally {
+    spinner.classList.add('hidden');
+    btnText.textContent = 'Salvar Registro';
+  }
+}
+
+function deleteCurrent() { deleteRecord(currentRecordId); }
+function deleteRecord(id) {
+  if (!confirm('Confirmar exclusão? Esta ação não pode ser desfeita.')) return;
+  if (!db) { toast('Firebase não conectado.', 'error'); return; }
+  db.collection(COLLECTION).doc(id).delete()
+    .then(() => { toast('Registro excluído.', 'success'); closeModal('modal-detail'); })
+    .catch(e => toast('Erro: ' + e.message, 'error'));
+}
+
+// ═══════════════ NAV / FILTER ═══════════════
+function showView(name) {
+  document.querySelectorAll('.view-section').forEach(v => v.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById(`view-${name}`).classList.add('active');
+  document.getElementById(`nav-${name}`).classList.add('active');
+}
+
+function setFilter(f, btn) {
+  currentFilter = f;
+  document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  renderTable();
+}
+
+function filterTable() { renderTable(); }
+function filterTablePac() { renderPacTable(); }
+
+// ═══════════════ MODAL HELPERS ═══════════════
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+document.querySelectorAll('.modal-overlay').forEach(m => {
+  m.addEventListener('click', e => { if (e.target === m) m.classList.remove('open'); });
+});
+
+// ═══════════════ EXPORT CSV ═══════════════
+function exportCSV() {
+  if (records.length === 0) { toast('Nenhum dado para exportar.', 'error'); return; }
+  const headers = ['Nome','Nascimento','CNS','CPF','ACS','Endereço','Telefone','Medicamentos','1ª Emissão','Status','Próxima Retirada'];
+  const rows = records.map(r => {
+    const s = getRecordStatus(r);
+    const next = getNextDate(r.emissao);
+    const meds = (r.medicamentos||[]).map(m=>`${m.nome} (${m.apresentacao}) - ${m.posologia}`).join(' | ');
+    return [r.nome,r.nascimento,r.cns,r.cpf,r.acs,r.endereco,r.telefone,meds,r.emissao,s.label,next]
+      .map(v => `"${(v||'').replace(/"/g,'""')}"`).join(',');
+  });
+  const csv = [headers.join(','), ...rows].join('\n');
+  const blob = new Blob(['\uFEFF'+csv], {type:'text/csv;charset=utf-8'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `controlepsi_${new Date().toISOString().split('T')[0]}.csv`;
+  a.click(); URL.revokeObjectURL(url);
+  toast('CSV exportado!', 'success');
+}
+
+// ═══════════════ TOAST ═══════════════
+function toast(msg, type = 'success') {
+  const el = document.getElementById('toast');
+  const icon = type === 'success'
+    ? `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--green-500)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`
+    : `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--danger-500)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`;
+  el.innerHTML = icon + ' ' + msg;
+  el.className = `show ${type}`;
+  setTimeout(() => el.className = '', 3500);
+}
+
+// ═══════════════ UTILS ═══════════════
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+document.getElementById('f-cpf').addEventListener('input', function() {
+  let v = this.value.replace(/\D/g,'');
+  if (v.length > 11) v = v.slice(0,11);
+  v = v.replace(/(\d{3})(\d)/,'$1.$2').replace(/(\d{3})(\d)/,'$1.$2').replace(/(\d{3})(\d{1,2})$/,'$1-$2');
+  this.value = v;
+});
+
+document.getElementById('f-telefone').addEventListener('input', function() {
+  let v = this.value.replace(/\D/g,'');
+  if (v.length > 11) v = v.slice(0,11);
+  let res = '';
+  if (v.length > 0) res += '(' + v.substring(0,2);
+  if (v.length > 2) res += ') ' + v.substring(2,7);
+  if (v.length > 7) res += '-' + v.substring(7,11);
+  this.value = res;
+});
+
+// Login on Enter in user field
+document.getElementById('login-user').addEventListener('keydown', e => {
+  if (e.key === 'Enter') document.getElementById('login-pass').focus();
+});
+</script>
+</body>
+</html>
