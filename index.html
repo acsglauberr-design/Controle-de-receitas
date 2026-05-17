@@ -1685,16 +1685,22 @@ function getNextDate(emissao) {
 // FIX 1: Trata todos os status salvos manualmente no Firestore ANTES de calcular por data.
 // 'urgente' é calculado dinamicamente — nunca salvo no Firestore.
 function getRecordStatus(rec) {
-  if (rec.status === 'recepcao')     return { label: 'Na Recepção', cls: 'pill-recepcao',  key: 'recepcao' };
-  if (rec.status === 'retirada')     return { label: 'Retirada',    cls: 'pill-retirada',  key: 'retirada' };
-  if (rec.status === 'nova-receita') return { label: 'Nova Emissão',cls: 'pill-nova-rec',  key: 'nova-receita' };
-  if (rec.status === 'vencida')      return { label: 'Vencida',     cls: 'pill-vencida',   key: 'vencida',  alert: true };
-  if (rec.status === 'pendente')     return { label: 'Pendente',    cls: 'pill-pendente',  key: 'pendente' };
-  // null/undefined ou qualquer outro valor: calcular por data
   const next = getNextDate(rec.emissao);
   const diff = daysDiff(next);
-  if (diff < 0) return { label: 'Vencida',    cls: 'pill-vencida',  key: 'vencida',  alert: true };
-  if (diff <= ALERT_DAYS) return { label: 'Urgente', cls: 'pill-urgente', key: 'urgente', alert: true };
+  const isUrgentByDate  = diff >= 0 && diff <= ALERT_DAYS;
+  const isExpiredByDate = diff < 0;
+
+  // Data sempre vence qualquer status salvo para urgente/vencida
+  if (isExpiredByDate) return { label: 'Vencida', cls: 'pill-vencida', key: 'vencida', alert: true };
+  if (isUrgentByDate)  return { label: 'Urgente', cls: 'pill-urgente', key: 'urgente', alert: true };
+
+  // Fora da janela de urgência: status manual é válido
+  if (rec.status === 'recepcao')     return { label: 'Na Recepção', cls: 'pill-recepcao',  key: 'recepcao' };
+  if (rec.status === 'retirada')     return { label: 'Retirada',    cls: 'pill-retirada',  key: 'retirada' };
+  if (rec.status === 'nova-receita') return { label: 'Nova Emissão', cls: 'pill-nova-rec', key: 'nova-receita' };
+  if (rec.status === 'vencida')      return { label: 'Vencida',      cls: 'pill-vencida',  key: 'vencida', alert: true };
+  if (rec.status === 'pendente')     return { label: 'Pendente',     cls: 'pill-pendente', key: 'pendente' };
+
   return { label: 'Aguardando', cls: 'pill-pendente', key: 'pendente' };
 }
 
