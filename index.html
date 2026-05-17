@@ -951,6 +951,21 @@
   }
   .posologia-tag:hover { border-color: var(--green-400); background: var(--green-50); color: var(--green-700); }
   .posologia-tag.sel { border-color: var(--green-500); background: var(--green-100); color: var(--green-700); font-weight: 700; }
+
+  /* ── URGENTE BANNER no modal ── */
+  .urgente-banner {
+    background: #fff7ed;
+    border: 1px solid #fed7aa;
+    border-left: 4px solid #f97316;
+    border-radius: 10px;
+    padding: 1rem 1.25rem;
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .urgente-banner h3 { font-size: 0.9rem; color: #c2410c; margin-bottom: 4px; font-family: 'Nunito', sans-serif; font-weight: 700; }
+  .urgente-banner p { font-size: 0.82rem; color: var(--muted); }
 </style>
 </head>
 <body>
@@ -1323,7 +1338,6 @@
           <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
           Medicamentos Prescritos
         </div>
-        <!-- MED FILTER inside form -->
         <div class="med-filter-bar" style="margin-bottom:.75rem">
           <label>Filtrar categoria:</label>
           <select id="form-cat-filter" onchange="filterMedCategories()">
@@ -1611,9 +1625,7 @@ function loadACS() {
   db.collection(ACS_COLLECTION).orderBy('nome').get().then(snap => {
     acsOptions = snap.docs.map(d => ({ id: d.id, ...d.data() }));
     updateACSDropdowns();
-  }).catch(() => {
-    // If collection doesn't exist yet, no problem
-  });
+  }).catch(() => {});
 }
 
 function updateACSDropdowns() {
@@ -1670,14 +1682,18 @@ function getNextDate(emissao) {
 }
 
 // ═══════════════ STATUS LOGIC ═══════════════
+// FIX 1: Trata todos os status salvos manualmente no Firestore ANTES de calcular por data.
+// 'urgente' é calculado dinamicamente — nunca salvo no Firestore.
 function getRecordStatus(rec) {
-  if (rec.status === 'recepcao')     return { label: 'Na Recepção', cls: 'pill-recepcao', key: 'recepcao' };
-  if (rec.status === 'retirada')     return { label: 'Retirada', cls: 'pill-retirada', key: 'retirada' };
-  if (rec.status === 'nova-receita') return { label: 'Nova Emissão', cls: 'pill-nova-rec', key: 'nova-receita' };
-
+  if (rec.status === 'recepcao')     return { label: 'Na Recepção', cls: 'pill-recepcao',  key: 'recepcao' };
+  if (rec.status === 'retirada')     return { label: 'Retirada',    cls: 'pill-retirada',  key: 'retirada' };
+  if (rec.status === 'nova-receita') return { label: 'Nova Emissão',cls: 'pill-nova-rec',  key: 'nova-receita' };
+  if (rec.status === 'vencida')      return { label: 'Vencida',     cls: 'pill-vencida',   key: 'vencida',  alert: true };
+  if (rec.status === 'pendente')     return { label: 'Pendente',    cls: 'pill-pendente',  key: 'pendente' };
+  // null/undefined ou qualquer outro valor: calcular por data
   const next = getNextDate(rec.emissao);
   const diff = daysDiff(next);
-  if (diff < 0) return { label: 'Vencida', cls: 'pill-vencida', key: 'vencida', alert: true };
+  if (diff < 0) return { label: 'Vencida',    cls: 'pill-vencida',  key: 'vencida',  alert: true };
   if (diff <= ALERT_DAYS) return { label: 'Urgente', cls: 'pill-urgente', key: 'urgente', alert: true };
   return { label: 'Aguardando', cls: 'pill-pendente', key: 'pendente' };
 }
@@ -1812,8 +1828,10 @@ function renderTable() {
     const nextLabel = (s.key === 'retirada') ? '—' :
       `${fmtDate(next)}${diff >= 0 ? ` (${diff}d)` : ' (vencida)'}`;
 
+    // FIX 2: emitirBtn agora chama marcarReceitaFeita(id, true) para abrir o modal após confirmar.
+    // O TD do status tem onclick para abrir o detail, garantindo que qualquer clique na célula funcione.
     const emitirBtn = s.key === 'urgente' ?
-      `<button class="btn-emitir" onclick="event.stopPropagation(); marcarReceitaFeita('${r.id}')">
+      `<button class="btn-emitir" style="margin-top:6px; display:block" onclick="event.stopPropagation(); marcarReceitaFeita('${r.id}', true)">
         <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
         Receita Feita
       </button>` : '';
@@ -1885,13 +1903,13 @@ function renderAlerts() {
   container.innerHTML = `<div class="alert-list">${alertRecs.map(r => {
     const next = getNextDate(r.emissao);
     const diff = daysDiff(next);
-    return `<div class="alert-item warning">
+    return `<div class="alert-item warning" onclick="openDetail('${r.id}')">
       <div class="alert-icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--warn-500)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg></div>
       <div class="alert-content">
         <h3>${escHtml(r.nome)}</h3>
         <p>ACS: ${escHtml(r.acs||'—')} · Tel: ${escHtml(r.telefone||'—')}</p>
         <p style="margin-top:4px; font-size:.78rem; color:var(--muted)">${(r.medicamentos||[]).map(m=>m.nome).join(', ')}</p>
-        <button class="btn-emitir" style="margin-top:8px" onclick="marcarReceitaFeita('${r.id}')">
+        <button class="btn-emitir" style="margin-top:8px" onclick="event.stopPropagation(); marcarReceitaFeita('${r.id}', true)">
           <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
           Marcar como Emitida
         </button>
@@ -1957,12 +1975,16 @@ function renderNovaReceita() {
   }).join('')}</div>`;
 }
 
-// ═══════════════ MARCAR RECEITA FEITA ═══════════════
-function marcarReceitaFeita(id) {
+// ═══════════════ FIX 2: marcarReceitaFeita com abrirModal ═══════════════
+// Após confirmar a emissão, abre o modal de detalhes se abrirModal=true.
+function marcarReceitaFeita(id, abrirModal) {
   if (!db) { toast('Firebase não conectado.', 'error'); return; }
   if (!confirm('Confirmar que a receita foi emitida pelo médico?')) return;
   db.collection(COLLECTION).doc(id).update({ status: 'nova-receita' })
-    .then(() => toast('Receita marcada como emitida!', 'success'))
+    .then(() => {
+      toast('Receita marcada como emitida!', 'success');
+      if (abrirModal) setTimeout(() => openDetail(id), 350);
+    })
     .catch(e => toast('Erro: ' + e.message, 'error'));
 }
 
@@ -1975,6 +1997,16 @@ function openDetail(id) {
 
   const schedule = getSchedule(r.emissao);
   const s = getRecordStatus(r);
+
+  // FIX: banner de urgência destacado no topo do modal
+  const urgenteBanner = s.key === 'urgente' ? `
+    <div class="urgente-banner">
+      <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#f97316" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+      <div>
+        <h3>Receita urgente — retirada em breve</h3>
+        <p>Oriente o médico a emitir a receita e clique em <strong>"Marcar como Emitida"</strong> abaixo.</p>
+      </div>
+    </div>` : '';
 
   const scheduleHtml = schedule.map((d, i) => {
     const diff = daysDiff(d);
@@ -1991,7 +2023,7 @@ function openDetail(id) {
     const emitirBtn = (isUrgent && r.status !== 'nova-receita' && r.status !== 'recepcao') ?
       `<button class="btn-emitir" onclick="marcarReceitaFeita('${id}')">
         <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-        Receita Feita
+        Marcar como Emitida
       </button>` : '';
 
     return `<div class="schedule-item ${cls}">
@@ -2013,6 +2045,8 @@ function openDetail(id) {
   `).join('') || '<p style="color:var(--muted)">Nenhum medicamento.</p>';
 
   document.getElementById('detail-body').innerHTML = `
+    ${urgenteBanner}
+
     <div class="detail-section">
       <h3><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 1 0-16 0"/></svg> Dados do Paciente</h3>
       <div class="detail-grid">
@@ -2055,7 +2089,7 @@ function openDetail(id) {
         <button class="status-option ${r.status==='nova-receita'?'selected-nova-receita':''}" onclick="quickStatus('${r.id}','nova-receita',this)">
           ${iconDoc} Nova Emissão
         </button>
-        <button class="status-option ${r.status==='pendente'?'selected-pendente':''}" onclick="quickStatus('${r.id}','pendente',this)">
+        <button class="status-option ${r.status==='pendente'||(!r.status&&s.key==='pendente')?'selected-pendente':''}" onclick="quickStatus('${r.id}','pendente',this)">
           ${iconClock} Pendente
         </button>
         <button class="status-option ${r.status==='vencida'?'selected-vencida':''}" onclick="quickStatus('${r.id}','vencida',this)">
@@ -2113,11 +2147,9 @@ function editRecord(id) {
   document.getElementById('f-nascimento').value = r.nascimento || '';
   document.getElementById('f-cns').value = r.cns || '';
   document.getElementById('f-cpf').value = r.cpf || '';
-  // ACS dropdown
   const acsEl = document.getElementById('f-acs');
   acsEl.value = r.acs || '';
   if (!acsEl.value && r.acs) {
-    // Add as option if not in list
     const opt = document.createElement('option');
     opt.value = r.acs; opt.textContent = r.acs;
     acsEl.appendChild(opt);
@@ -2126,7 +2158,10 @@ function editRecord(id) {
   document.getElementById('f-endereco').value = r.endereco || '';
   document.getElementById('f-telefone').value = r.telefone || '';
   document.getElementById('f-emissao').value = r.emissao || '';
-  currentStatus = r.status || 'pendente';
+
+  // FIX 3: 'urgente' é calculado, nunca salvo — ao editar, tratar como 'pendente'
+  currentStatus = (r.status && r.status !== 'urgente') ? r.status : 'pendente';
+
   document.querySelectorAll('#status-selector .status-option').forEach(b => {
     b.className = 'status-option';
     if ((b.getAttribute('onclick')||'').includes(`'${currentStatus}'`)) {
@@ -2149,12 +2184,10 @@ let currentCatFilter = '';
 
 function filterMedCategories() {
   currentCatFilter = document.getElementById('form-cat-filter').value;
-  // Update all existing med selects
   document.querySelectorAll('.med-nome-select').forEach(sel => {
     const curVal = sel.value;
     populateMedSelect(sel);
     if (curVal) sel.value = curVal;
-    // Trigger apresentacao update
     updateApresentacoes(sel.closest('.med-item'));
   });
 }
@@ -2240,7 +2273,6 @@ function addMedField(data = {}) {
 
   populateMedSelect(nomeSel);
 
-  // Restore values
   if (data.nome) {
     nomeSel.value = data.nome;
     if (!nomeSel.value) {
@@ -2424,7 +2456,6 @@ document.getElementById('f-telefone').addEventListener('input', function() {
   this.value = res;
 });
 
-// Login on Enter in user field
 document.getElementById('login-user').addEventListener('keydown', e => {
   if (e.key === 'Enter') document.getElementById('login-pass').focus();
 });
